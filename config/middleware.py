@@ -12,7 +12,7 @@ class LoginMiddleware:
             return response
         else:
             response = {
-                'msg': 'Not logged in',
+                'msg': 'Unauthorized',
             }
             return JsonResponse(response, status= 401)
 
