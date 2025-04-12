@@ -3,3 +3,4 @@ settings.py
 secrets.py
 **/migrations/**
 !**/migrations/__init__.py
+media/
