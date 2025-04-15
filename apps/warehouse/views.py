@@ -9,6 +9,8 @@ from apps.warehouse.functions import check_image_validity
 from apps.warehouse.models import (
     Category,
     CategoryImages,
+    Product,
+    ProductImages,
 )
 
 from utils.functions import decode, encode
@@ -17,8 +19,14 @@ from utils.functions import decode, encode
 # Create your views here.
 
 def category_management(request, category_id= None):
-    """
-    Category management by ADMIN
+    """Category Management by the ADMINs
+
+    Args:
+        request (HTTP Request Object): HTTP Request object
+        category_id (int, optional): Primary Key for category selected. Defaults to None.
+
+    Returns:
+        HTTP Response: Depends upon the request method type
     """
     if request.method == "GET":
         if category_id:
@@ -142,6 +150,16 @@ def category_management(request, category_id= None):
 
 
 def category_image_management(request, category_id= None, image_id= None):
+    """Category Image Management by ADMIN
+
+    Args:
+        request (HTTP Request object): HTTP request object.
+        category_id (int, optional): Primary key of the Category selected. Defaults to None.
+        image_id (int, optional): Primary key of the image selected. Defaults to None.
+
+    Returns:
+        HTTP Response: Depending upon the request method type.
+    """
     if request.method == 'GET':
         if not category_id:
             response = {
@@ -208,3 +226,122 @@ def category_image_management(request, category_id= None, image_id= None):
         }
         return JsonResponse(response, status=405)
 
+
+def product_management(request, category_id= None, product_id= None):
+    """Product management by the ADMIN
+
+    Args:
+        request (HTTP Request object): HTTP Request object
+        category_id (int, optional): Primary key for category selected. Defaults to None.
+        product_id (int, optional): Primary key for product selected. Defaults to None.
+
+    Returns:
+        HTTP Response: Depends upon thr request method type.
+    """
+    if not category_id:
+        response = {
+            'msg': 'Category id is required',
+        }
+        return JsonResponse(response, status= 200)
+    queryset = Category.objects.filter(id= decode(category_id)).exclude(status= Status.DELETED).exists()
+    if not queryset:
+        response = {
+            'msg': 'Category does not exists',
+        }
+        return JsonResponse(response, status= 409)
+    if request.method == 'GET':
+        if not category_id:
+            response = {
+                'msg': 'Category id is required', 
+            }
+            return JsonResponse(response, status= 200)
+        if product_id:
+            queryset = Product.objects.filter(id= product_id).exclude(status= Status.DELETED).values('id', 'name', 'description', 'category_id', 'price_per_unit', 'stocks_available', 'prod_status', 'discount')
+            [product.update({'id': encode(product.id)}) for product in queryset]
+            response = {
+                'data': list(queryset),
+            }
+            return JsonResponse(response, status= 200)
+        queryset = Product.objects.exclude(status= Status.DELETED).values('id', 'name', 'description', 'category_id', 'price_per_unit', 'stocks_available', 'prod_status', 'discount')
+        [product.update({'id': encode(product.id)}) for product in queryset]
+        response = {
+            'data': list(queryset),
+        }
+        return JsonResponse(response, status= 200)
+    elif request.method == 'POST':
+        data = request.POST
+        name = data.get('name')
+        description = data.get('description')
+        price_per_unit = data.get('prod_price')
+        stocks_available = data.get('stocks_qnty')
+        prod_status = data.get('prod_status')
+        discount = data.get('discount')
+        images = request.FILES.getlist('prod_images')
+        if not name:
+            response = {
+                'field': 'name',
+                'msg': 'Product name is required',
+            }
+            return JsonResponse(response, status= 400)
+        elif not description:
+            response = {
+                'field': 'description',
+                'msg': 'Product description is required',
+            }
+            return JsonResponse(response, status= 400)
+        elif not price_per_unit:
+            response = {
+                'field': 'prod_price',
+                "msg": "Price of the product is not given",
+            }
+            return JsonResponse(response, status= 400)
+        elif not stocks_available:
+            response = {
+                'field': 'no_of_stocks',
+                'msg': 'No of stocks available in warehouse is required',
+            }
+            return JsonResponse(response, status= 400)
+        elif not prod_status:
+            response = {
+                'field': 'prod_status',
+                'msg': 'Status of the product is required',
+            }
+            return JsonResponse(response, data= 400)
+        if discount and not discount.isnumeric:
+            response = {
+                "msg": "Discount must be numeric",
+            }
+            return JsonResponse(response, status= 400)
+        if images:
+            if not isinstance(images, list):
+                response = {
+                    'field': 'images',
+                    'msg': 'Images must be given in the list',
+                }
+                return JsonResponse(response, status= 400)
+            response = check_image_validity(images)
+            if not isinstance(response, bool):
+                return JsonResponse(response, status= 400)
+        product, created = Product.objects.update_or_create(
+            name= name, 
+            description= description, 
+            price_per_unit= price_per_unit, 
+            stocks_available= stocks_available, 
+            prod_status= prod_status, 
+            discount= discount,
+            create_defaults= {'status': Status.CREATED},
+        )
+        if not created:
+            response = {
+                'msg': 'Product already exists',
+            }
+            return JsonResponse(response, status= 409)
+        response = {
+            'msg': 'Product has been added to the selected category',
+        }
+        return JsonResponse(response, status= 201)
+    else:
+        response = {
+            'msg': 'Method not allowed',
+        }
+        return JsonResponse(response, status= 405)
