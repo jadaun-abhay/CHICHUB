@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 
 from django.conf import settings
 from django.db.models import F
@@ -238,32 +239,31 @@ def product_management(request, category_id= None, product_id= None):
     Returns:
         HTTP Response: Depends upon thr request method type.
     """
+    
     if not category_id:
         response = {
             'msg': 'Category id is required',
         }
         return JsonResponse(response, status= 200)
-    queryset = Category.objects.filter(id= decode(category_id)).exclude(status= Status.DELETED).exists()
+    category_id = decode(category_id)
+    queryset = Category.objects.filter(id= category_id).exclude(status= Status.DELETED)
     if not queryset:
         response = {
             'msg': 'Category does not exists',
         }
         return JsonResponse(response, status= 409)
+    
     if request.method == 'GET':
-        if not category_id:
-            response = {
-                'msg': 'Category id is required', 
-            }
-            return JsonResponse(response, status= 200)
         if product_id:
-            queryset = Product.objects.filter(id= product_id).exclude(status= Status.DELETED).values('id', 'name', 'description', 'category_id', 'price_per_unit', 'stocks_available', 'prod_status', 'discount')
-            [product.update({'id': encode(product.id)}) for product in queryset]
+            product_id = decode(product_id)
+            queryset = Product.objects.filter(category_id= category_id, id= product_id).exclude(status= Status.DELETED).values('id', 'name', 'description', 'category_id', 'price_per_unit', 'stocks_available', 'prod_status', 'discount')
+            [product.update({'id': encode(product.get('id'))}) for product in queryset]
             response = {
                 'data': list(queryset),
             }
             return JsonResponse(response, status= 200)
-        queryset = Product.objects.exclude(status= Status.DELETED).values('id', 'name', 'description', 'category_id', 'price_per_unit', 'stocks_available', 'prod_status', 'discount')
-        [product.update({'id': encode(product.id)}) for product in queryset]
+        queryset = Product.objects.filter(category_id= category_id).exclude(status= Status.DELETED).values('id', 'name', 'description', 'category_id', 'price_per_unit', 'stocks_available', 'prod_status', 'discount')
+        [product.update({'id': encode(product.get('id')), 'category_id': encode(product.get('category_id'))}) for product in queryset]
         response = {
             'data': list(queryset),
         }
@@ -324,7 +324,8 @@ def product_management(request, category_id= None, product_id= None):
                 return JsonResponse(response, status= 400)
         product, created = Product.objects.update_or_create(
             name= name, 
-            description= description, 
+            description= description,
+            category_id= category_id,
             price_per_unit= price_per_unit, 
             stocks_available= stocks_available, 
             prod_status= prod_status, 
@@ -336,10 +337,56 @@ def product_management(request, category_id= None, product_id= None):
                 'msg': 'Product already exists',
             }
             return JsonResponse(response, status= 409)
+        if images:
+            instance_list = [ProductImages(product= product, image= image, status= Status.CREATED) for image in images]
+            ProductImages.objects.bulk_create(instance_list)
         response = {
             'msg': 'Product has been added to the selected category',
         }
         return JsonResponse(response, status= 201)
+    elif request.method == 'PATCH':
+        if not product_id:
+            response = {
+                'msg': 'Product id is required',
+            }
+            return JsonResponse(response, status= 400)
+        prod_queryset = Product.objects.filter(category_id= category_id, id= product_id).exclude(status= Status.DELETED)
+        if not prod_queryset:
+            response = {
+                'msg': f'Product does not exists in {queryset.first().name} category',
+            }
+            return JsonResponse(response, status= 409)
+        data = json.loads(request.body)
+        name = data.get('name', prod_queryset.first().name)
+        description = data.get('description', prod_queryset.first().description)
+        price_per_unit = data.get('prod_price', prod_queryset.first().price_per_unit)
+        stocks_available = data.get('stocks_qnty', prod_queryset.first().stocks_available)
+        prod_status = data.get('prod_status', prod_queryset.first().prod_status)
+        discount = data.get('discount', prod_queryset.first().discount)
+        prod_queryset.update(status= Status.UPDATED, name= name, description= description, price_per_unit= price_per_unit, stocks_available= stocks_available, prod_status= prod_status)
+        response = {
+            'msg': 'Product has been updated successfully',
+        }
+        return JsonResponse(response, status= 200)
+    elif request.method == 'DELETE':
+        category_name = queryset.first().name
+        if not product_id:
+            response = {
+                'msg': "Product id is required",
+            }
+            return JsonResponse(response, status= 409)
+        product_id = decode(product_id)
+        queryset = Product.objects.filter(id= product_id).exclude(status= Status.DELETED)
+        if not queryset:
+            response = {
+                'msg': f'Product does not exists in {category_name} category',
+            }
+            return JsonResponse(response, status= 409)
+        queryset.update(status= Status.DELETED, deleted_at= datetime.now())
+        response = {
+            'msg': 'Product has been deleted successfully',
+        }
+        return JsonResponse(response, status= 200)
     else:
         response = {
             'msg': 'Method not allowed',

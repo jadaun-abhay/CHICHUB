@@ -21,10 +21,11 @@ class Category(BaseModel):
     parent = models.ForeignKey('self', on_delete= models.SET_NULL, null= True, related_name= 'children')
     discount = models.FloatField(null= True)
 
-from apps.warehouse.functions import categ_path_generator
 
 class CategoryImages(BaseModel):
     def categ_img_path(self, filename):
+        from apps.warehouse.functions import categ_path_generator
+
         generated_path = '/'.join(categ_path_generator(self.category.id).split('/')[:-2])
         path = 'categories/' + generated_path + '/' + filename
         return path
@@ -44,6 +45,10 @@ class Product(BaseModel):
 
 class ProductImages(BaseModel):
     def prod_img_path(self, filename):
-        pass
+        from apps.warehouse.functions import prod_path_generator
+        
+        generated_path = "categories/" + prod_path_generator(self.product.id)
+        return generated_path + f'/{filename}'
+
     product = models.ForeignKey(Product, on_delete= models.CASCADE, null= True, related_name= 'images')
     image = models.ImageField(upload_to= prod_img_path)
