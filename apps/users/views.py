@@ -37,7 +37,6 @@ def admin_login(request):
         queryset = User.objects.filter(username= username)
         if queryset.exists():
             user = authenticate(username=username, password= password)
-            print(user)
             if user:
                 auth_login(request, user)
                 response = {
