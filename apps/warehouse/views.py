@@ -20,7 +20,7 @@ from utils.functions import decode, encode
 # Create your views here.
 
 def category_management(request, category_id= None):
-    """Category Management by the ADMINs
+    """Category Management by the ADMIN
 
     Args:
         request (HTTP Request Object): HTTP Request object
@@ -171,7 +171,9 @@ def category_image_management(request, category_id= None, image_id= None):
         category_id = decode(category_id)
         queryset = CategoryImages.objects.filter(category_id= category_id).exclude(status= Status.DELETED).values('id', 'image')
         [category_image.update({'id': encode(category_image.get('id'))}) for category_image in queryset]
-        response = {'data': list(queryset)}
+        response = {
+            'data': list(queryset),
+        }
         return JsonResponse(response, status=200)
     elif request.method == 'POST':
         if not category_id:
@@ -387,6 +389,93 @@ def product_management(request, category_id= None, product_id= None):
             'msg': 'Product has been deleted successfully',
         }
         return JsonResponse(response, status= 200)
+    else:
+        response = {
+            'msg': 'Method not allowed',
+        }
+        return JsonResponse(response, status= 405)
+
+
+def product_image_management(request, category_id= None, product_id= None):
+    """Product image management by the ADMIN
+
+    Args:
+        request (HTTP request object): HTTP request object
+        category_id (str, optional): Primary key for the selected category. Defaults to None.
+        product_id (str, optional): Primary key for the selected product. Defaults to None.
+
+    Returns:
+        JSON response: Depending upon the request type.
+    """
+    
+    if not category_id:
+        response = {
+            'msg': 'Category id is required',
+        }
+        return JsonResponse(response, status= 400)
+    category_id = decode(category_id)
+    categ_queryset = Category.objects.filter(id= category_id).exclude(status= Status.DELETED)
+    if not categ_queryset:
+        response = {
+            'msg': 'Category does not exists',
+        }
+        return JsonResponse(response, status= 409)
+    if not product_id:
+        response = {
+            'msg': 'Product id is required'
+        }
+        return JsonResponse(response, status= 400)
+    product_id= decode(product_id)
+    prod_queryset = Product.objects.filter(id= product_id).exclude(status= Status.DELETED)
+    if not prod_queryset:
+        response = {
+            'msg': f'Product does not exists in {categ_queryset.first().name} category',
+        }
+        return JsonResponse(response, status= 409)
+    
+    if request.method == 'GET':
+        prod_queryset = ProductImages.objects.filter(product__category_id= category_id).exclude(product__status= Status.DELETED).exclude(status= Status.DELETED).values('id', 'product_id', 'image')
+        [prod_image.update({"id": encode(prod_image.get("id")), "product_id": encode(prod_image.get("product_id")),}) for prod_image in prod_queryset]
+        response = {
+            'data': list(prod_queryset),
+        }
+        return JsonResponse(response, status= 200)
+    elif request.method == 'POST':
+        if not product_id:
+            response = {
+                'msg': 'Product id is required',
+            }
+            return JsonResponse(response, status= 400)
+        product_id = decode(product_id)
+        images = request.FILES.getlist('prod_images')
+        if images:
+            if not isinstance(images, list):
+                response = {
+                    'msg': 'Images must be a list',
+                }
+                return JsonResponse(response, status= 400)
+            response = check_image_validity(images)
+            if not isinstance(response, bool):
+                return JsonResponse(response, status= 400)
+        instance_list = [ProductImages(image= image, product_id= product_id, status= Status.DELETED) for image in images]
+        ProductImages.objects.bulk_create(instance_list)
+        response = {
+            'msg': 'Product images added successfully',
+        }
+        return JsonResponse(response, status= 201)
+    elif request.method == 'DELETE':
+        data = json.loads(request.body)
+        prod_images = data.get('prod_imgs')
+        prod_images = [decode(image_id) for image_id in prod_images]
+        instance_list = [ProductImages(id= image_id) for image_id in prod_images]
+        for instance in instance_list:
+            instance.status = Status.DELETED
+            instance.deleted_at = datetime.now()
+        ProductImages.objects.bulk_update(instance_list, ['status', 'deleted_at'])
+        response = {
+            'msg': 'Product images are deleted successfully',
+        }
+        return JsonResponse(response, status= 400)
     else:
         response = {
             'msg': 'Method not allowed',

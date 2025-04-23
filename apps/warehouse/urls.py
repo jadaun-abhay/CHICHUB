@@ -9,4 +9,5 @@ urlpatterns = [
     path('warehouse/categories/<str:category_id>/images/<str:image_id>/', views.category_image_management),
     path('warehouse/categories/<str:category_id>/products/', views.product_management),
     path('warehouse/categories/<str:category_id>/products/<str:product_id>/', views.product_management),
+    path('warehouse/categories/<str:category_id>/products/<str:product_id>/images/', views.product_image_management),
 ]
