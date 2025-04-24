@@ -6,7 +6,6 @@ from django.db.models import F
 from django.http import JsonResponse
 
 from apps.warehouse.enums import Status
-from apps.warehouse.functions import check_image_validity
 from apps.warehouse.models import (
     Category,
     CategoryImages,
@@ -14,7 +13,7 @@ from apps.warehouse.models import (
     ProductImages,
 )
 
-from utils.functions import decode, encode
+from utils.functions import decode, encode, check_image_validity
 
 
 # Create your views here.

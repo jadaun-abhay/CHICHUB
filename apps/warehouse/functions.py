@@ -16,24 +16,6 @@ def categ_path_generator(categ_id):
     return path
 
 
-def check_image_validity(images):
-    for image in images:
-        img_extension = image.name.split('.')[-1]
-        img_content_type = image.content_type
-        if img_extension not in settings.WHITELISTED_IMAGES.keys():
-            response = {
-                'file': image.name,
-                'msg': 'Image type not supported (must be .jpg, .png or .jpeg)',
-            }
-            return response
-        elif img_content_type not in settings.WHITELISTED_IMAGES.values():
-            response = {
-                'file': image.name,
-                'msg': 'Image type not supported',
-            }
-            return response
-    return True
-
 def prod_path_generator(prod_id):
     path = ''
     parent_category_instance = Product.objects.filter(id= prod_id).select_related('category').first().category
