@@ -201,3 +201,22 @@ def admin_login(request):
             'msg': 'Email does not exist',
         }
         return JsonResponse(response, status= 403)
+    else:
+        response = {
+            'msg': 'Method not allowed',
+        }
+        return JsonResponse(response, status= 405)
+
+
+def admin_logout(request):
+    if request.method == 'POST':
+        auth_logout(request)
+        response = {
+            'msg': 'Logout successful',
+        }
+        return JsonResponse(response, status= 200)
+    else:
+        response = {
+            'msg': 'Method not allowed',
+        }
+        return JsonResponse(response, status= 405)
