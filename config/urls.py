@@ -25,6 +25,7 @@ urlpatterns = [
     # Django urls
     path('admin-portal/', include('apps.warehouse.urls')),
     path('auth/', include('apps.users.urls')),
+    path('store/', include('apps.store.urls')),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

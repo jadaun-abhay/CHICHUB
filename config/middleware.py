@@ -6,7 +6,7 @@ class LoginMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        paths = ['/auth/register/', '/auth/admin-portal/login/', '/auth/login/', '/', '/auth/']
+        paths = ['/auth/register/', '/auth/admin-portal/login/', '/auth/login/', '/', '/auth/', '/store/',]
         if request.user.is_authenticated or request.path in paths:
             response = self.get_response(request)
             return response
