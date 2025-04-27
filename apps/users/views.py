@@ -1,11 +1,8 @@
 import base64
 import re
 
-from django.contrib.auth import authenticate
-from django.contrib.auth.models import User
 from django.http import JsonResponse
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
-from django.shortcuts import render
 
 from apps.users.models import CustomUser
 from apps.warehouse.enums import Status
@@ -178,26 +175,23 @@ def admin_login(request):
             }
             return JsonResponse(response, status= 403)
         credentials = base64.b64decode(credentials).decode('utf-8').split(':')
-        credentials = {"username": credentials[0], "password": credentials[1]}
-        username = credentials.get('username')
+        credentials = {"email": credentials[0], "password": credentials[1]}
+        email = credentials.get('email')
         password = credentials.get('password')
-        queryset = User.objects.filter(username= username)
+        queryset = CustomUser.objects.filter(email= email)
         if queryset.exists():
-            user = authenticate(username= username, password= password)
+            user = authenticate(email= email, password= password)
             if user:
                 auth_login(request, user)
                 response = {
-                    'error': False,
                     'msg': 'Admin login successful',
                 }
                 return JsonResponse(response, status= 200)
             response = {
-                'error': True,
                 'msg': 'Password is incorrect',
             }
             return JsonResponse(response, status= 401)
         response = {
-            'error': True,
             'msg': 'Email does not exist',
         }
         return JsonResponse(response, status= 403)
