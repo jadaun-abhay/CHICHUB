@@ -12,9 +12,9 @@ class LoginMiddleware:
             return response
         else:
             response = {
-                'msg': 'Unauthorized',
+                'msg': 'Forbidden',
             }
-            return JsonResponse(response, status= 401)
+            return JsonResponse(response, status= 403)
 
 class AdminMiddleware:
     def __init__(self, get_response):
